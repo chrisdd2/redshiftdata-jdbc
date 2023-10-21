@@ -1,16 +1,14 @@
 package dev.chrisdd.redshiftdata;
 
 import dev.chrisdd.redshiftdata.config.RedshiftConfiguration;
+import software.amazon.awssdk.auth.credentials.EnvironmentVariableCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
-import software.amazon.awssdk.core.pagination.sync.SdkIterable;
 import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.services.redshiftdata.RedshiftDataClient;
 import software.amazon.awssdk.services.redshiftdata.model.*;
 import software.amazon.awssdk.services.redshiftdata.paginators.GetStatementResultIterable;
 
-import javax.xml.transform.Result;
 import java.sql.*;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
@@ -24,12 +22,49 @@ class RedshiftConnection implements Connection {
     public RedshiftConnection(RedshiftConfiguration config){
         this.client = RedshiftDataClient.builder()
                 .httpClientBuilder(ApacheHttpClient.builder())
+                .credentialsProvider(EnvironmentVariableCredentialsProvider.create())
+                .credentialsProvider(ProfileCredentialsProvider.create(this.config.getAwsProfileName().isEmpty()? "default": this.config.getAwsProfileName()))
                 .build();
         this.config = config;
         this.schema = "public";
     }
 
-    private void waitExecution(String id){
+    private void cancelExecution(String id){
+        CancelStatementRequest req = CancelStatementRequest.builder().id(id).build();
+        try{
+            this.client.cancelStatement(req);
+        } catch (RedshiftDataException ignored){
+
+        }
+    }
+
+    private void waitExecution(String id) throws InterruptedException, SQLException {
+        int sleepDuration = 5;
+        int totalSleep = 0;
+        while (true){
+            DescribeStatementResponse resp = describeExecution(id);
+            switch (resp.status()){
+                case PICKED:
+                case SUBMITTED:
+                case STARTED:
+                    if (totalSleep > this.config.getNetworkTimeout()) {
+                        cancelExecution(id);
+                        throw new SQLException(String.format("query timed out after %d miliseconds",totalSleep));
+                    }
+                    sleepDuration = sleepDuration*2;
+                    if (sleepDuration > 2000) sleepDuration = 2000;
+                    Thread.sleep(sleepDuration);
+                    totalSleep += sleepDuration;
+                    continue;
+                case FINISHED:
+                    return;
+                case FAILED:
+                case ABORTED:
+                    throw new SQLException(String.format("query failed/aborted %s %s",resp.redshiftQueryId(),resp.error()));
+                case UNKNOWN_TO_SDK_VERSION:
+                    throw new SQLException(String.format("unknown status %s",resp.statusAsString()));
+            }
+        }
     }
 
     private DescribeStatementResponse describeExecution(String id){
@@ -59,12 +94,12 @@ class RedshiftConnection implements Connection {
         return resp.id();
     }
 
-    public long executeSql(String query) {
+    public long executeSql(String query) throws SQLException, InterruptedException {
         String id = this.executeSqlImpl(query);
         waitExecution(id);
         return describeExecution(id).resultRows();
     }
-    public GetStatementResultIterable executeQuery(String query) throws SQLException{
+    public GetStatementResultIterable executeQuery(String query) throws SQLException, InterruptedException {
         String id = this.executeSqlImpl(query);
         waitExecution(id);
         DescribeStatementResponse resp = describeExecution(id);

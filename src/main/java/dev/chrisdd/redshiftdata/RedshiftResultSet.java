@@ -1,5 +1,6 @@
 package dev.chrisdd.redshiftdata;
 
+import software.amazon.awssdk.services.redshiftdata.model.Field;
 import software.amazon.awssdk.services.redshiftdata.model.GetStatementResultResponse;
 import software.amazon.awssdk.services.redshiftdata.paginators.GetStatementResultIterable;
 
@@ -8,28 +9,57 @@ import java.io.Reader;
 import java.math.BigDecimal;
 import java.net.URL;
 import java.sql.*;
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.List;
 import java.util.Map;
 
 class RedshiftResultSet implements ResultSet {
 
-    private RedshiftStatement stmt;
-    private ResultSet result;
+    private final RedshiftStatement stmt;
+    private List<Object[]> resultRows;
 
-    private ResultSet getResultSetFromResponse(GetStatementResultIterable iter){
+    private Object[] currentRow;
+    private int totalResultRows;
+    private int rowIndex;
+    private int lastColumn;
+
+    private RedshiftResultSetMetadata metadata;
+
+    private void processResponse(GetStatementResultIterable iter){
+        List<Object[]> rows = new ArrayList<>();
+
         for ( GetStatementResultResponse resp : iter){
-//            resp.columnMetadata().get(0).typeName()
+            // parse metadata in first response only
+            if (this.metadata == null) {
+                this.metadata = new RedshiftResultSetMetadata(resp);
+                this.totalResultRows = Math.toIntExact(resp.totalNumRows());
+            }
+            // TODO: this seems slow
+            for ( List<Field> r : resp.records() ){
+                Object[] row = new Object[r.size()];
+                for (int i =0;i<r.size();i++)
+                    row[i] = r.get(i).getValueForField(r.get(i).type().name(),Object.class);
+                rows.add(row);
+            }
         }
+        this.resultRows = rows;
     }
 
     public RedshiftResultSet(RedshiftStatement stmt, GetStatementResultIterable results){
         this.stmt = stmt;
-        this.result = this.getResultSetFromResponse(results);
+        this.processResponse(results);
     }
 
     @Override
     public boolean next() throws SQLException {
-        return false;
+        if (this.rowIndex != this.totalResultRows){
+            this.afterLast();
+            return false;
+        }
+        this.currentRow = this.resultRows.get(this.rowIndex++);
+        this.lastColumn = -1;
+        return true;
     }
 
     @Override
@@ -39,292 +69,313 @@ class RedshiftResultSet implements ResultSet {
 
     @Override
     public boolean wasNull() throws SQLException {
-        return false;
+        if (this.currentRow == null){
+            throw new SQLException("you have to call next at least once");
+        }
+        if (this.lastColumn == -1){
+            throw new SQLException("you have to read at least one column");
+        }
+        return this.currentRow[this.lastColumn] == null;
     }
 
     @Override
     public String getString(int columnIndex) throws SQLException {
-        return null;
+        return this.getObject(columnIndex).toString();
     }
 
     @Override
     public boolean getBoolean(int columnIndex) throws SQLException {
-        return false;
+        return this.getObject(columnIndex,Boolean.class);
     }
 
     @Override
     public byte getByte(int columnIndex) throws SQLException {
-        return 0;
+        return this.getObject(columnIndex,Byte.class);
     }
 
     @Override
     public short getShort(int columnIndex) throws SQLException {
-        return 0;
+        return this.getObject(columnIndex,Short.class);
     }
 
     @Override
     public int getInt(int columnIndex) throws SQLException {
-        return 0;
+        return this.getObject(columnIndex,Integer.class);
     }
 
     @Override
     public long getLong(int columnIndex) throws SQLException {
-        return 0;
+        return this.getObject(columnIndex,Long.class);
     }
 
     @Override
     public float getFloat(int columnIndex) throws SQLException {
-        return 0;
+        return this.getObject(columnIndex,Float.class);
     }
 
     @Override
     public double getDouble(int columnIndex) throws SQLException {
-        return 0;
+        return this.getObject(columnIndex,Double.class);
     }
 
     @Override
     public BigDecimal getBigDecimal(int columnIndex, int scale) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("no supported");
     }
 
     @Override
     public byte[] getBytes(int columnIndex) throws SQLException {
-        return new byte[0];
+        throw new SQLFeatureNotSupportedException("no supported");
     }
 
     @Override
     public Date getDate(int columnIndex) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("no supported");
     }
 
     @Override
     public Time getTime(int columnIndex) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("no supported");
     }
 
     @Override
     public Timestamp getTimestamp(int columnIndex) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("no supported");
     }
 
     @Override
     public InputStream getAsciiStream(int columnIndex) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("no supported");
     }
 
     @Override
     public InputStream getUnicodeStream(int columnIndex) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("no supported");
     }
 
     @Override
     public InputStream getBinaryStream(int columnIndex) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("no supported");
     }
 
     @Override
     public String getString(String columnLabel) throws SQLException {
-        return null;
+        return getObject(columnLabel,String.class);
     }
 
     @Override
     public boolean getBoolean(String columnLabel) throws SQLException {
-        return false;
+        return getObject(columnLabel,Boolean.class);
     }
 
     @Override
     public byte getByte(String columnLabel) throws SQLException {
-        return 0;
+        return getObject(columnLabel,Byte.class);
     }
 
     @Override
     public short getShort(String columnLabel) throws SQLException {
-        return 0;
+        return getObject(columnLabel,Short.class);
     }
 
     @Override
     public int getInt(String columnLabel) throws SQLException {
-        return 0;
+        return getObject(columnLabel,Integer.class);
     }
 
     @Override
     public long getLong(String columnLabel) throws SQLException {
-        return 0;
+        return getObject(columnLabel,Long.class);
     }
 
     @Override
     public float getFloat(String columnLabel) throws SQLException {
-        return 0;
+        return getObject(columnLabel,Float.class);
     }
 
     @Override
     public double getDouble(String columnLabel) throws SQLException {
-        return 0;
+        return getObject(columnLabel,Double.class);
     }
 
     @Override
     public BigDecimal getBigDecimal(String columnLabel, int scale) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("no supported");
     }
 
     @Override
     public byte[] getBytes(String columnLabel) throws SQLException {
-        return new byte[0];
+        throw new SQLFeatureNotSupportedException("no supported");
     }
 
     @Override
     public Date getDate(String columnLabel) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("no supported");
     }
 
     @Override
     public Time getTime(String columnLabel) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("no supported");
     }
 
     @Override
     public Timestamp getTimestamp(String columnLabel) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("no supported");
     }
 
     @Override
     public InputStream getAsciiStream(String columnLabel) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("no supported");
     }
 
     @Override
     public InputStream getUnicodeStream(String columnLabel) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("no supported");
     }
 
     @Override
     public InputStream getBinaryStream(String columnLabel) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("no supported");
     }
 
     @Override
     public SQLWarning getWarnings() throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("no supported");
     }
-
     @Override
     public void clearWarnings() throws SQLException {
+        throw new SQLFeatureNotSupportedException("no supported");
 
     }
 
     @Override
     public String getCursorName() throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("no supported");
     }
 
     @Override
     public ResultSetMetaData getMetaData() throws SQLException {
-        return null;
+        return this.metadata;
     }
 
     @Override
     public Object getObject(int columnIndex) throws SQLException {
-        return null;
+        return this.currentRow[columnIndex];
     }
 
     @Override
     public Object getObject(String columnLabel) throws SQLException {
-        return null;
+        return this.getObject(this.findColumn(columnLabel));
     }
 
     @Override
     public int findColumn(String columnLabel) throws SQLException {
-        return 0;
+        int n = this.metadata.getColumnCount();
+        for (int i=0;i<n;i++){
+            if (columnLabel.equalsIgnoreCase(this.metadata.getColumnName(i)))
+                return i;
+        }
+        throw new SQLException(String.format("column not %s found",columnLabel));
     }
 
     @Override
     public Reader getCharacterStream(int columnIndex) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("no supported");
     }
 
     @Override
     public Reader getCharacterStream(String columnLabel) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("no supported");
     }
 
     @Override
     public BigDecimal getBigDecimal(int columnIndex) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("no supported");
     }
 
     @Override
     public BigDecimal getBigDecimal(String columnLabel) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("no supported");
     }
 
     @Override
     public boolean isBeforeFirst() throws SQLException {
-        return false;
+        return this.currentRow == null;
     }
 
     @Override
     public boolean isAfterLast() throws SQLException {
-        return false;
+        return this.rowIndex == this.totalResultRows +1;
     }
 
     @Override
     public boolean isFirst() throws SQLException {
-        return false;
+        return this.rowIndex == 1;
     }
 
     @Override
     public boolean isLast() throws SQLException {
-        return false;
+        return this.rowIndex == this.totalResultRows;
     }
 
     @Override
     public void beforeFirst() throws SQLException {
-
+        this.rowIndex = 0;
+        this.currentRow = null;
     }
 
     @Override
     public void afterLast() throws SQLException {
-
+        this.rowIndex = this.totalResultRows + 1;
+        this.currentRow = null;
     }
 
     @Override
     public boolean first() throws SQLException {
-        return false;
+        return absolute(1);
     }
 
     @Override
     public boolean last() throws SQLException {
-        return false;
+        return absolute(-1);
     }
 
     @Override
     public int getRow() throws SQLException {
-        return 0;
+        return this.rowIndex;
     }
 
     @Override
     public boolean absolute(int row) throws SQLException {
-        return false;
+        if( this.totalResultRows == 0 )
+            return false;
+        if ( row == -1)
+            row = this.totalResultRows;
+        this.currentRow = this.resultRows.get(row-1);
+        this.lastColumn = -1;
+        this.rowIndex = row;
+        return true;
     }
 
     @Override
     public boolean relative(int rows) throws SQLException {
-        return false;
+        if (this.rowIndex + rows > this.totalResultRows)
+            return false;
+        return absolute(this.rowIndex + rows);
     }
 
     @Override
     public boolean previous() throws SQLException {
-        return false;
+        return this.absolute(this.rowIndex-1);
     }
 
     @Override
     public void setFetchDirection(int direction) throws SQLException {
-
     }
 
     @Override
     public int getFetchDirection() throws SQLException {
-        return 0;
+        return ResultSet.FETCH_FORWARD;
     }
 
     @Override
@@ -339,12 +390,12 @@ class RedshiftResultSet implements ResultSet {
 
     @Override
     public int getType() throws SQLException {
-        return 0;
+        return ResultSet.TYPE_FORWARD_ONLY;
     }
 
     @Override
     public int getConcurrency() throws SQLException {
-        return 0;
+        return ResultSet.CONCUR_READ_ONLY;
     }
 
     @Override
@@ -589,7 +640,7 @@ class RedshiftResultSet implements ResultSet {
 
     @Override
     public Statement getStatement() throws SQLException {
-        return null;
+        return this.stmt;
     }
 
     @Override
@@ -964,21 +1015,24 @@ class RedshiftResultSet implements ResultSet {
 
     @Override
     public <T> T getObject(int columnIndex, Class<T> type) throws SQLException {
-        return null;
+        return type.cast(this.getObject(columnIndex));
     }
 
     @Override
     public <T> T getObject(String columnLabel, Class<T> type) throws SQLException {
-        return null;
+        return type.cast(this.getObject(columnLabel));
     }
 
     @Override
     public <T> T unwrap(Class<T> iface) throws SQLException {
-        return null;
+        if (isWrapperFor(iface)){
+            return iface.cast(this);
+        }
+        throw new SQLException(String.format("%s is not a wrapper for %s",getClass().getName(),iface.getName()));
     }
 
     @Override
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
-        return false;
+        return iface.isAssignableFrom(this.getClass());
     }
 }

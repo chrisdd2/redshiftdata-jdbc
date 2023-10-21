@@ -5,7 +5,7 @@ import java.sql.*;
 class RedshiftStatement implements Statement {
 
 
-    private RedshiftConnection conn;
+    private final RedshiftConnection conn;
 
     public RedshiftStatement(RedshiftConnection conn){
         this.conn = conn;
@@ -13,12 +13,20 @@ class RedshiftStatement implements Statement {
 
     @Override
     public ResultSet executeQuery(String sql) throws SQLException {
-        return this.conn.executeQuery(sql);
+        try {
+            return new RedshiftResultSet(this,this.conn.executeQuery(sql));
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
     public int executeUpdate(String sql) throws SQLException {
-        return (int)this.conn.executeSql(sql);
+        try {
+            return (int)this.conn.executeSql(sql);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
