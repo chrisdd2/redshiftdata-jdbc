@@ -1,9 +1,6 @@
 package dev.chrisdd.redshiftdata;
 
 import dev.chrisdd.redshiftdata.config.RedshiftConfiguration;
-import software.amazon.awssdk.auth.credentials.EnvironmentVariableCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
-import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.services.redshiftdata.RedshiftDataClient;
 import software.amazon.awssdk.services.redshiftdata.model.*;
 import software.amazon.awssdk.services.redshiftdata.paginators.GetStatementResultIterable;
@@ -20,11 +17,7 @@ class RedshiftConnection implements Connection {
     private String schema;
 
     public RedshiftConnection(RedshiftConfiguration config){
-        this.client = RedshiftDataClient.builder()
-                .httpClientBuilder(ApacheHttpClient.builder())
-                .credentialsProvider(EnvironmentVariableCredentialsProvider.create())
-                .credentialsProvider(ProfileCredentialsProvider.create(this.config.getAwsProfileName().isEmpty()? "default": this.config.getAwsProfileName()))
-                .build();
+        this.client = config.getClient();
         this.config = config;
         this.schema = "public";
     }
