@@ -13,38 +13,12 @@ public class RedshiftDriver implements Driver {
     public static int MAJOR_VERSION = 0;
     public static int MINOR_VERSION = 1;
 
-    public static Pattern JDBC_URL = Pattern.compile("^jdbc:redshiftdata:@(?<id>[\\w-]+)/(?<db>[\\w-]+)(?<params>\\?[\\w-=_]+)$");
+    public static Pattern JDBC_URL = Pattern.compile("^jdbc:redshiftdata:@(?<id>[\\w-]+)/(?<db>[\\w-]+)(?<params>\\?[\\w-=_&]+)$");
 
 
     @Override
     public Connection connect(String url, Properties info) throws SQLException {
-        Matcher m = JDBC_URL.matcher(url);
-        if (!m.matches())
-            throw new SQLException("url not compatible");
-        String identifier=m.group("id");
-        String database = m.group("db");
-        String params = m.group("params");
-        RedshiftConfiguration rd = new RedshiftConfiguration(info);
-        rd.setDatabase(database);
-        if (!params.isEmpty()){
-            String[] paramList = params.substring(1).split("&");
-            for (String param : paramList){
-                String[] paramParts = param.split("=");
-                String key = paramParts[0];
-                String value = paramParts[1];
-                if (key.equals("serverless") && value.equalsIgnoreCase("true")) {
-                    rd.setWorkgroupName(identifier);
-                    rd.setClusterIdentifier("");
-                }else if (key.equals("secretArn") && !value.isEmpty()){
-                    rd.setSecretArn(value);
-                }else if (key.equals("dbUser") && !value.isEmpty()){
-                    rd.setDbUser(value);
-                }else if (key.equals("profile") && !value.isEmpty()){
-                    rd.setAwsProfileName(value);
-                }
-            }
-        }
-        return new RedshiftConnection(rd);
+        return new RedshiftConnection(new RedshiftConfiguration(url,info));
     }
 
     @Override

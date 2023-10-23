@@ -9,10 +9,8 @@ import java.io.Reader;
 import java.math.BigDecimal;
 import java.net.URL;
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.List;
-import java.util.Map;
+import java.sql.Date;
+import java.util.*;
 
 class RedshiftResultSet implements ResultSet {
 
@@ -26,6 +24,26 @@ class RedshiftResultSet implements ResultSet {
 
     private RedshiftResultSetMetadata metadata;
 
+    private Object fieldToObject(Field fld){
+        String fieldName = fld.type().name();
+        switch (fieldName) {
+            case "BLOB_VALUE":
+                return fld.blobValue();
+            case "BOOLEAN_VALUE":
+                return fld.booleanValue();
+            case "DOUBLE_VALUE":
+                return fld.doubleValue();
+            case "IS_NULL":
+                return fld.isNull();
+            case "LONG_VALUE":
+                return fld.longValue();
+            case "STRING_VALUE":
+                return fld.stringValue();
+            default:
+                return "";
+        }
+    }
+
     private void processResponse(GetStatementResultIterable iter){
         List<Object[]> rows = new ArrayList<>();
 
@@ -38,12 +56,14 @@ class RedshiftResultSet implements ResultSet {
             // TODO: this seems slow
             for ( List<Field> r : resp.records() ){
                 Object[] row = new Object[r.size()];
-                for (int i =0;i<r.size();i++)
-                    row[i] = r.get(i).getValueForField(r.get(i).type().name(),Object.class);
+                for (int i =0;i<r.size();i++){
+                    row[i] = fieldToObject(r.get(i));
+                }
                 rows.add(row);
             }
         }
         this.resultRows = rows;
+        this.rowIndex=0;
     }
 
     public RedshiftResultSet(RedshiftStatement stmt, GetStatementResultIterable results){
@@ -53,7 +73,7 @@ class RedshiftResultSet implements ResultSet {
 
     @Override
     public boolean next() throws SQLException {
-        if (this.rowIndex != this.totalResultRows){
+        if (this.rowIndex == this.totalResultRows){
             this.afterLast();
             return false;
         }
@@ -75,7 +95,7 @@ class RedshiftResultSet implements ResultSet {
         if (this.lastColumn == -1){
             throw new SQLException("you have to read at least one column");
         }
-        return this.currentRow[this.lastColumn] == null;
+        return this.currentRow[this.lastColumn-1] == null;
     }
 
     @Override
@@ -260,7 +280,7 @@ class RedshiftResultSet implements ResultSet {
 
     @Override
     public Object getObject(int columnIndex) throws SQLException {
-        return this.currentRow[columnIndex];
+        return this.currentRow[columnIndex-1];
     }
 
     @Override

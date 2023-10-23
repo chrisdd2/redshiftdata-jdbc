@@ -7,6 +7,7 @@ import software.amazon.awssdk.services.redshiftdata.paginators.GetStatementResul
 
 import java.sql.*;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.Executor;
 
@@ -92,14 +93,15 @@ class RedshiftConnection implements Connection {
         waitExecution(id);
         return describeExecution(id).resultRows();
     }
-    public GetStatementResultIterable executeQuery(String query) throws SQLException, InterruptedException {
+    public Optional<GetStatementResultIterable> executeQuery(String query) throws SQLException, InterruptedException {
         String id = this.executeSqlImpl(query);
         waitExecution(id);
         DescribeStatementResponse resp = describeExecution(id);
-        if (!resp.hasResultSet())
-            throw new SQLException("query has no result set but result set was requested");
-        return this.getStatementResult(id);
+        if (resp.hasResultSet())
+            return Optional.of(this.getStatementResult(id));
+        return Optional.empty();
     }
+
 
 
     @Override
@@ -316,12 +318,12 @@ class RedshiftConnection implements Connection {
 
     @Override
     public String getClientInfo(String name) throws SQLException {
-        return null;
+        return "redshift-data-jdbc";
     }
 
     @Override
     public Properties getClientInfo() throws SQLException {
-        return null;
+        return new Properties();
     }
 
     @Override
@@ -369,5 +371,9 @@ class RedshiftConnection implements Connection {
     @Override
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
         return iface.isAssignableFrom(getClass());
+    }
+
+    public RedshiftConfiguration getConfig(){
+        return this.config;
     }
 }

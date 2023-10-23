@@ -16,6 +16,10 @@ class RedshiftResultSetMetadata implements ResultSetMetaData {
     public RedshiftResultSetMetadata(GetStatementResultResponse resp){
         this.metadata = resp.columnMetadata();
     }
+
+    private ColumnMetadata getColumn(int idx){
+        return this.metadata.get(idx-1);
+    }
     @Override
     public int getColumnCount() throws SQLException {
         return metadata.size();
@@ -28,7 +32,7 @@ class RedshiftResultSetMetadata implements ResultSetMetaData {
 
     @Override
     public boolean isCaseSensitive(int column) throws SQLException {
-        return this.metadata.get(column).isCaseSensitive();
+        return this.getColumn(column).isCaseSensitive();
     }
 
     @Override
@@ -38,52 +42,52 @@ class RedshiftResultSetMetadata implements ResultSetMetaData {
 
     @Override
     public boolean isCurrency(int column) throws SQLException {
-        return this.metadata.get(column).isCurrency();
+        return this.getColumn(column).isCurrency();
     }
 
     @Override
     public int isNullable(int column) throws SQLException {
-        return this.metadata.get(column).nullable() > 0? ResultSetMetaData.columnNullable: ResultSetMetaData.columnNoNulls;
+        return this.getColumn(column).nullable() > 0? ResultSetMetaData.columnNullable: ResultSetMetaData.columnNoNulls;
     }
 
     @Override
     public boolean isSigned(int column) throws SQLException {
-        return this.metadata.get(column).isSigned();
+        return this.getColumn(column).isSigned();
     }
 
     @Override
     public int getColumnDisplaySize(int column) throws SQLException {
-        return this.metadata.get(column).length();
+        return this.getColumn(column).length();
     }
 
     @Override
     public String getColumnLabel(int column) throws SQLException {
-        return this.metadata.get(column).label();
+        return this.getColumn(column).label();
     }
 
     @Override
     public String getColumnName(int column) throws SQLException {
-        return this.metadata.get(column).name();
+        return this.getColumn(column).name();
     }
 
     @Override
     public String getSchemaName(int column) throws SQLException {
-        return this.metadata.get(column).schemaName();
+        return this.getColumn(column).schemaName();
     }
 
     @Override
     public int getPrecision(int column) throws SQLException {
-        return this.metadata.get(column).precision();
+        return this.getColumn(column).precision();
     }
 
     @Override
     public int getScale(int column) throws SQLException {
-        return this.metadata.get(column).scale();
+        return this.getColumn(column).scale();
     }
 
     @Override
     public String getTableName(int column) throws SQLException {
-        return this.metadata.get(column).tableName();
+        return this.getColumn(column).tableName();
     }
 
     @Override
@@ -117,7 +121,7 @@ class RedshiftResultSetMetadata implements ResultSetMetaData {
 
     @Override
     public String getColumnTypeName(int column) throws SQLException {
-        return this.metadata.get(column).typeName().toLowerCase();
+        return this.getColumn(column).typeName().toLowerCase();
     }
 
     @Override

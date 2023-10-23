@@ -22,12 +22,12 @@ class RedshiftDatabaseMetadata implements DatabaseMetaData {
 
     @Override
     public String getURL() throws SQLException {
-        return null;
+        return this.conn.getConfig().getUrl();
     }
 
     @Override
     public String getUserName() throws SQLException {
-        return null;
+        return this.conn.getConfig().getDbUser();
     }
 
     @Override
@@ -67,22 +67,22 @@ class RedshiftDatabaseMetadata implements DatabaseMetaData {
 
     @Override
     public String getDriverName() throws SQLException {
-        return null;
+        return "redshiftdata-jdbc";
     }
 
     @Override
     public String getDriverVersion() throws SQLException {
-        return null;
+        return String.format("%d.%d",getDriverMajorVersion(),getDriverMinorVersion());
     }
 
     @Override
     public int getDriverMajorVersion() {
-        return 0;
+        return RedshiftDriver.MAJOR_VERSION;
     }
 
     @Override
     public int getDriverMinorVersion() {
-        return 0;
+        return RedshiftDriver.MINOR_VERSION;
     }
 
     @Override
@@ -137,7 +137,7 @@ class RedshiftDatabaseMetadata implements DatabaseMetaData {
 
     @Override
     public String getIdentifierQuoteString() throws SQLException {
-        return null;
+        return "\"";
     }
 
     @Override
@@ -152,37 +152,37 @@ class RedshiftDatabaseMetadata implements DatabaseMetaData {
 
     @Override
     public String getStringFunctions() throws SQLException {
-        return null;
+        return "";
     }
 
     @Override
     public String getSystemFunctions() throws SQLException {
-        return null;
+        return "";
     }
 
     @Override
     public String getTimeDateFunctions() throws SQLException {
-        return null;
+        return "";
     }
 
     @Override
     public String getSearchStringEscape() throws SQLException {
-        return null;
+        return "";
     }
 
     @Override
     public String getExtraNameCharacters() throws SQLException {
-        return null;
+        return "";
     }
 
     @Override
     public boolean supportsAlterTableWithAddColumn() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
     public boolean supportsAlterTableWithDropColumn() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
@@ -192,32 +192,32 @@ class RedshiftDatabaseMetadata implements DatabaseMetaData {
 
     @Override
     public boolean nullPlusNonNullIsNull() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
     public boolean supportsConvert() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
     public boolean supportsConvert(int fromType, int toType) throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
     public boolean supportsTableCorrelationNames() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
     public boolean supportsDifferentTableCorrelationNames() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
     public boolean supportsExpressionsInOrderBy() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
@@ -227,7 +227,7 @@ class RedshiftDatabaseMetadata implements DatabaseMetaData {
 
     @Override
     public boolean supportsGroupBy() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
@@ -237,12 +237,12 @@ class RedshiftDatabaseMetadata implements DatabaseMetaData {
 
     @Override
     public boolean supportsGroupByBeyondSelect() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
     public boolean supportsLikeEscapeClause() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
@@ -257,37 +257,37 @@ class RedshiftDatabaseMetadata implements DatabaseMetaData {
 
     @Override
     public boolean supportsNonNullableColumns() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
     public boolean supportsMinimumSQLGrammar() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
     public boolean supportsCoreSQLGrammar() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
     public boolean supportsExtendedSQLGrammar() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
     public boolean supportsANSI92EntryLevelSQL() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
     public boolean supportsANSI92IntermediateSQL() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
     public boolean supportsANSI92FullSQL() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
@@ -297,12 +297,12 @@ class RedshiftDatabaseMetadata implements DatabaseMetaData {
 
     @Override
     public boolean supportsOuterJoins() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
     public boolean supportsFullOuterJoins() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
@@ -312,42 +312,42 @@ class RedshiftDatabaseMetadata implements DatabaseMetaData {
 
     @Override
     public String getSchemaTerm() throws SQLException {
-        return null;
+        return "schema";
     }
 
     @Override
     public String getProcedureTerm() throws SQLException {
-        return null;
+        return "procedure";
     }
 
     @Override
     public String getCatalogTerm() throws SQLException {
-        return null;
+        return "database";
     }
 
     @Override
     public boolean isCatalogAtStart() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
     public String getCatalogSeparator() throws SQLException {
-        return null;
+        return ".";
     }
 
     @Override
     public boolean supportsSchemasInDataManipulation() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
     public boolean supportsSchemasInProcedureCalls() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
     public boolean supportsSchemasInTableDefinitions() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
@@ -362,17 +362,17 @@ class RedshiftDatabaseMetadata implements DatabaseMetaData {
 
     @Override
     public boolean supportsCatalogsInDataManipulation() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
     public boolean supportsCatalogsInProcedureCalls() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
     public boolean supportsCatalogsInTableDefinitions() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
@@ -382,7 +382,7 @@ class RedshiftDatabaseMetadata implements DatabaseMetaData {
 
     @Override
     public boolean supportsCatalogsInPrivilegeDefinitions() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
@@ -402,42 +402,42 @@ class RedshiftDatabaseMetadata implements DatabaseMetaData {
 
     @Override
     public boolean supportsStoredProcedures() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
     public boolean supportsSubqueriesInComparisons() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
     public boolean supportsSubqueriesInExists() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
     public boolean supportsSubqueriesInIns() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
     public boolean supportsSubqueriesInQuantifieds() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
     public boolean supportsCorrelatedSubqueries() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
     public boolean supportsUnion() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
     public boolean supportsUnionAll() throws SQLException {
-        return false;
+        return true;
     }
 
     @Override
@@ -602,87 +602,87 @@ class RedshiftDatabaseMetadata implements DatabaseMetaData {
 
     @Override
     public ResultSet getProcedures(String catalog, String schemaPattern, String procedureNamePattern) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("not supported");
     }
 
     @Override
     public ResultSet getProcedureColumns(String catalog, String schemaPattern, String procedureNamePattern, String columnNamePattern) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("not supported");
     }
 
     @Override
     public ResultSet getTables(String catalog, String schemaPattern, String tableNamePattern, String[] types) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("not supported");
     }
 
     @Override
     public ResultSet getSchemas() throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("not supported");
     }
 
     @Override
     public ResultSet getCatalogs() throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("not supported");
     }
 
     @Override
     public ResultSet getTableTypes() throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("not supported");
     }
 
     @Override
     public ResultSet getColumns(String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("not supported");
     }
 
     @Override
     public ResultSet getColumnPrivileges(String catalog, String schema, String table, String columnNamePattern) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("not supported");
     }
 
     @Override
     public ResultSet getTablePrivileges(String catalog, String schemaPattern, String tableNamePattern) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("not supported");
     }
 
     @Override
     public ResultSet getBestRowIdentifier(String catalog, String schema, String table, int scope, boolean nullable) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("not supported");
     }
 
     @Override
     public ResultSet getVersionColumns(String catalog, String schema, String table) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("not supported");
     }
 
     @Override
     public ResultSet getPrimaryKeys(String catalog, String schema, String table) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("not supported");
     }
 
     @Override
     public ResultSet getImportedKeys(String catalog, String schema, String table) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("not supported");
     }
 
     @Override
     public ResultSet getExportedKeys(String catalog, String schema, String table) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("not supported");
     }
 
     @Override
     public ResultSet getCrossReference(String parentCatalog, String parentSchema, String parentTable, String foreignCatalog, String foreignSchema, String foreignTable) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("not supported");
     }
 
     @Override
     public ResultSet getTypeInfo() throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("not supported");
     }
 
     @Override
     public ResultSet getIndexInfo(String catalog, String schema, String table, boolean unique, boolean approximate) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("not supported");
     }
 
     @Override
@@ -747,12 +747,12 @@ class RedshiftDatabaseMetadata implements DatabaseMetaData {
 
     @Override
     public ResultSet getUDTs(String catalog, String schemaPattern, String typeNamePattern, int[] types) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("not supported");
     }
 
     @Override
     public Connection getConnection() throws SQLException {
-        return null;
+        return this.conn;
     }
 
     @Override
@@ -777,17 +777,17 @@ class RedshiftDatabaseMetadata implements DatabaseMetaData {
 
     @Override
     public ResultSet getSuperTypes(String catalog, String schemaPattern, String typeNamePattern) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("not supported");
     }
 
     @Override
     public ResultSet getSuperTables(String catalog, String schemaPattern, String tableNamePattern) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("not supported");
     }
 
     @Override
     public ResultSet getAttributes(String catalog, String schemaPattern, String typeNamePattern, String attributeNamePattern) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("not supported");
     }
 
     @Override
@@ -837,12 +837,12 @@ class RedshiftDatabaseMetadata implements DatabaseMetaData {
 
     @Override
     public RowIdLifetime getRowIdLifetime() throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("not supported");
     }
 
     @Override
     public ResultSet getSchemas(String catalog, String schemaPattern) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("not supported");
     }
 
     @Override
@@ -857,22 +857,22 @@ class RedshiftDatabaseMetadata implements DatabaseMetaData {
 
     @Override
     public ResultSet getClientInfoProperties() throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("not supported");
     }
 
     @Override
     public ResultSet getFunctions(String catalog, String schemaPattern, String functionNamePattern) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("not supported");
     }
 
     @Override
     public ResultSet getFunctionColumns(String catalog, String schemaPattern, String functionNamePattern, String columnNamePattern) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("not supported");
     }
 
     @Override
     public ResultSet getPseudoColumns(String catalog, String schemaPattern, String tableNamePattern, String columnNamePattern) throws SQLException {
-        return null;
+        throw new SQLFeatureNotSupportedException("not supported");
     }
 
     @Override
@@ -882,11 +882,13 @@ class RedshiftDatabaseMetadata implements DatabaseMetaData {
 
     @Override
     public <T> T unwrap(Class<T> iface) throws SQLException {
-        return null;
+        if (isWrapperFor(iface))
+            return iface.cast(this);
+        throw new SQLException(String.format("%s is not a wrapper for %s",getClass().getName(),iface.getName()));
     }
 
     @Override
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
-        return false;
+        return iface.isAssignableFrom(this.getClass());
     }
 }

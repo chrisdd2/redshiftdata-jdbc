@@ -1,13 +1,16 @@
 package dev.chrisdd.redshiftdata.config;
 
+import dev.chrisdd.redshiftdata.RedshiftDriver;
 import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
 import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.services.redshiftdata.RedshiftDataClient;
 import software.amazon.awssdk.services.redshiftdata.RedshiftDataClientBuilder;
+import software.amazon.awssdk.services.redshiftdata.model.RedshiftDataRequest;
 
 import java.sql.DriverPropertyInfo;
 import java.sql.SQLException;
 import java.util.Properties;
+import java.util.regex.Matcher;
 
 public class RedshiftConfiguration {
     static final String DATABASE_PROPERTY = "database";
@@ -25,6 +28,7 @@ public class RedshiftConfiguration {
     String dbUser;
     String secretArn;
     int networkTimeout;
+    String url;
 
     String awsProfileName;
 
@@ -84,6 +88,10 @@ public class RedshiftConfiguration {
         this.awsProfileName = awsProfileName;
     }
 
+    public String getUrl(){
+        return this.url;
+    }
+
     public static DriverPropertyInfo[] getPropertyInfo() {
         DriverPropertyInfo database = new DriverPropertyInfo(DATABASE_PROPERTY,"");
         database.required = true;
@@ -111,9 +119,37 @@ public class RedshiftConfiguration {
     }
 
 
-    public RedshiftConfiguration(Properties props) throws SQLException{
+    public RedshiftConfiguration(String url,Properties props) throws SQLException{
+        Matcher m = RedshiftDriver.JDBC_URL.matcher(url);
+        if (!m.matches())
+            throw new SQLException("url not compatible");
+        String identifier=m.group("id");
+        String database = m.group("db");
+        String params = m.group("params");
+        this.setDatabase(database);
+        if (!params.isEmpty()){
+            String[] paramList = params.substring(1).split("&");
+            for (String param : paramList){
+                String[] paramParts = param.split("=");
+                String key = paramParts[0];
+                String value = paramParts[1];
+                if (key.equals("serverless") && value.equalsIgnoreCase("true")) {
+                    this.setWorkgroupName(identifier);
+                    this.setClusterIdentifier("");
+                }else if (key.equals("secretArn") && !value.isEmpty()){
+                    this.setSecretArn(value);
+                }else if (key.equals("dbUser") && !value.isEmpty()){
+                    this.setDbUser(value);
+                }else if (key.equals("profile") && !value.isEmpty()){
+                    this.setAwsProfileName(value);
+                }
+            }
+        }
         props.forEach((k,v) -> this.setProperties(k.toString(),v.toString()));
-
+        if (this.getNetworkTimeout() == 0) {
+            this.setNetworkTimeout(60*1000);
+        }
+        this.url = url;
     }
 
     public RedshiftDataClient getClient(){
@@ -123,4 +159,6 @@ public class RedshiftConfiguration {
             b = b.credentialsProvider(ProfileCredentialsProvider.create(this.awsProfileName));
         return b.build();
     }
+
+
 }
