@@ -10,9 +10,45 @@ import java.math.BigDecimal;
 import java.net.URL;
 import java.sql.*;
 import java.sql.Date;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.chrono.IsoChronology;
+import java.time.format.*;
+import java.time.temporal.ChronoField;
 import java.util.*;
 
 class RedshiftResultSet implements ResultSet {
+
+    //        "stringValue": "2023-10-23"
+    //        "stringValue": "09:26:38.779304+00"
+    //        "stringValue": "2023-10-23 09:26:38.779304+00"
+    public static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
+    public static final DateTimeFormatter TIMESTAMP_FORMATTER = new DateTimeFormatterBuilder()
+            //        "stringValue": "2023-10-23 09:26:38.779304+00"
+            .appendValue(ChronoField.YEAR, 4, 10, SignStyle.EXCEEDS_PAD)
+            .appendLiteral('-')
+            .appendValue(ChronoField.MONTH_OF_YEAR, 2)
+            .appendLiteral('-')
+            .appendValue(ChronoField.DAY_OF_MONTH, 2)
+            .appendLiteral(" ")
+            .appendValue(ChronoField.HOUR_OF_DAY,2)
+            .appendLiteral(":")
+            .appendValue(ChronoField.MINUTE_OF_DAY,2)
+            .appendLiteral(":")
+            .appendValue(ChronoField.SECOND_OF_DAY,2)
+            .appendLiteral(".")
+            .appendValue(ChronoField.MICRO_OF_SECOND)
+            .appendZoneOrOffsetId()
+            .toFormatter();
+    public static final DateTimeFormatter DATE_FORMATTER =new DateTimeFormatterBuilder()
+            .appendValue(ChronoField.YEAR, 4, 10, SignStyle.EXCEEDS_PAD)
+            .appendLiteral('-')
+            .appendValue(ChronoField.MONTH_OF_YEAR, 2)
+            .appendLiteral('-')
+            .appendValue(ChronoField.DAY_OF_MONTH, 2)
+            .toFormatter();
+
 
     private final RedshiftStatement stmt;
     private List<Object[]> resultRows;
@@ -24,7 +60,7 @@ class RedshiftResultSet implements ResultSet {
 
     private RedshiftResultSetMetadata metadata;
 
-    private Object fieldToObject(Field fld){
+    private Object fieldToObject(Field fld) throws SQLException{
         String fieldName = fld.type().name();
         switch (fieldName) {
             case "BLOB_VALUE":
@@ -34,20 +70,21 @@ class RedshiftResultSet implements ResultSet {
             case "DOUBLE_VALUE":
                 return fld.doubleValue();
             case "IS_NULL":
-                return fld.isNull();
+                return null;
             case "LONG_VALUE":
                 return fld.longValue();
             case "STRING_VALUE":
                 return fld.stringValue();
             default:
-                return "";
+                throw new SQLException("unhandled type " + fieldName);
         }
     }
 
-    private void processResponse(GetStatementResultIterable iter){
+    private void processResponse(Iterator<GetStatementResultResponse> iter) throws SQLException {
         List<Object[]> rows = new ArrayList<>();
 
-        for ( GetStatementResultResponse resp : iter){
+        while (iter.hasNext()){
+            GetStatementResultResponse resp = iter.next();
             // parse metadata in first response only
             if (this.metadata == null) {
                 this.metadata = new RedshiftResultSetMetadata(resp);
@@ -66,7 +103,7 @@ class RedshiftResultSet implements ResultSet {
         this.rowIndex=0;
     }
 
-    public RedshiftResultSet(RedshiftStatement stmt, GetStatementResultIterable results){
+    public RedshiftResultSet(RedshiftStatement stmt, Iterator<GetStatementResultResponse> results) throws SQLException {
         this.stmt = stmt;
         this.processResponse(results);
     }
@@ -95,12 +132,12 @@ class RedshiftResultSet implements ResultSet {
         if (this.lastColumn == -1){
             throw new SQLException("you have to read at least one column");
         }
-        return this.currentRow[this.lastColumn-1] == null;
+        return this.currentRow[this.lastColumn] == null;
     }
 
     @Override
     public String getString(int columnIndex) throws SQLException {
-        return this.getObject(columnIndex).toString();
+        return String.valueOf(this.getObject(columnIndex));
     }
 
     @Override
@@ -140,7 +177,7 @@ class RedshiftResultSet implements ResultSet {
 
     @Override
     public BigDecimal getBigDecimal(int columnIndex, int scale) throws SQLException {
-        throw new SQLFeatureNotSupportedException("no supported");
+        return new BigDecimal(getString(columnIndex));
     }
 
     @Override
@@ -150,17 +187,17 @@ class RedshiftResultSet implements ResultSet {
 
     @Override
     public Date getDate(int columnIndex) throws SQLException {
-        throw new SQLFeatureNotSupportedException("no supported");
+        return Date.valueOf(LocalDate.parse(getString(columnIndex),DATE_FORMATTER));
     }
 
     @Override
     public Time getTime(int columnIndex) throws SQLException {
-        throw new SQLFeatureNotSupportedException("no supported");
+        return Time.valueOf(LocalTime.parse(getString(columnIndex),TIME_FORMATTER));
     }
 
     @Override
     public Timestamp getTimestamp(int columnIndex) throws SQLException {
-        throw new SQLFeatureNotSupportedException("no supported");
+        return Timestamp.valueOf(LocalDateTime.parse(getString(columnIndex),TIMESTAMP_FORMATTER));
     }
 
     @Override
@@ -185,42 +222,42 @@ class RedshiftResultSet implements ResultSet {
 
     @Override
     public boolean getBoolean(String columnLabel) throws SQLException {
-        return getObject(columnLabel,Boolean.class);
+        return getBoolean(findColumn(columnLabel));
     }
 
     @Override
     public byte getByte(String columnLabel) throws SQLException {
-        return getObject(columnLabel,Byte.class);
+        return getByte(findColumn(columnLabel));
     }
 
     @Override
     public short getShort(String columnLabel) throws SQLException {
-        return getObject(columnLabel,Short.class);
+        return getShort(findColumn(columnLabel));
     }
 
     @Override
     public int getInt(String columnLabel) throws SQLException {
-        return getObject(columnLabel,Integer.class);
+        return getInt(findColumn(columnLabel));
     }
 
     @Override
     public long getLong(String columnLabel) throws SQLException {
-        return getObject(columnLabel,Long.class);
+        return getLong(findColumn(columnLabel));
     }
 
     @Override
     public float getFloat(String columnLabel) throws SQLException {
-        return getObject(columnLabel,Float.class);
+        return getFloat(findColumn(columnLabel));
     }
 
     @Override
     public double getDouble(String columnLabel) throws SQLException {
-        return getObject(columnLabel,Double.class);
+        return getDouble(findColumn(columnLabel));
     }
 
     @Override
     public BigDecimal getBigDecimal(String columnLabel, int scale) throws SQLException {
-        throw new SQLFeatureNotSupportedException("no supported");
+        return getBigDecimal(findColumn(columnLabel));
     }
 
     @Override
@@ -230,17 +267,17 @@ class RedshiftResultSet implements ResultSet {
 
     @Override
     public Date getDate(String columnLabel) throws SQLException {
-        throw new SQLFeatureNotSupportedException("no supported");
+        return getDate(findColumn(columnLabel));
     }
 
     @Override
     public Time getTime(String columnLabel) throws SQLException {
-        throw new SQLFeatureNotSupportedException("no supported");
+        return getTime(findColumn(columnLabel));
     }
 
     @Override
     public Timestamp getTimestamp(String columnLabel) throws SQLException {
-        throw new SQLFeatureNotSupportedException("no supported");
+        return getTimestamp(findColumn(columnLabel));
     }
 
     @Override
@@ -280,6 +317,7 @@ class RedshiftResultSet implements ResultSet {
 
     @Override
     public Object getObject(int columnIndex) throws SQLException {
+        this.lastColumn = columnIndex-1;
         return this.currentRow[columnIndex-1];
     }
 
@@ -291,7 +329,7 @@ class RedshiftResultSet implements ResultSet {
     @Override
     public int findColumn(String columnLabel) throws SQLException {
         int n = this.metadata.getColumnCount();
-        for (int i=0;i<n;i++){
+        for (int i=1;i<=n;i++){
             if (columnLabel.equalsIgnoreCase(this.metadata.getColumnName(i)))
                 return i;
         }
@@ -371,6 +409,9 @@ class RedshiftResultSet implements ResultSet {
             return false;
         if ( row == -1)
             row = this.totalResultRows;
+        if (row <= 0){
+            throw new SQLException("huh row");
+        }
         this.currentRow = this.resultRows.get(row-1);
         this.lastColumn = -1;
         this.rowIndex = row;
@@ -665,7 +706,7 @@ class RedshiftResultSet implements ResultSet {
 
     @Override
     public Object getObject(int columnIndex, Map<String, Class<?>> map) throws SQLException {
-        return null;
+        return getObject(columnIndex);
     }
 
     @Override
@@ -690,7 +731,7 @@ class RedshiftResultSet implements ResultSet {
 
     @Override
     public Object getObject(String columnLabel, Map<String, Class<?>> map) throws SQLException {
-        return null;
+        return getObject(columnLabel);
     }
 
     @Override
@@ -715,42 +756,42 @@ class RedshiftResultSet implements ResultSet {
 
     @Override
     public Date getDate(int columnIndex, Calendar cal) throws SQLException {
-        return null;
+        return getDate(columnIndex);
     }
 
     @Override
     public Date getDate(String columnLabel, Calendar cal) throws SQLException {
-        return null;
+        return getDate(columnLabel);
     }
 
     @Override
     public Time getTime(int columnIndex, Calendar cal) throws SQLException {
-        return null;
+        return getTime(columnIndex);
     }
 
     @Override
     public Time getTime(String columnLabel, Calendar cal) throws SQLException {
-        return null;
+        return getTime(columnLabel);
     }
 
     @Override
     public Timestamp getTimestamp(int columnIndex, Calendar cal) throws SQLException {
-        return null;
+        return getTimestamp(columnIndex);
     }
 
     @Override
     public Timestamp getTimestamp(String columnLabel, Calendar cal) throws SQLException {
-        return null;
+        return getTimestamp(columnLabel);
     }
 
     @Override
     public URL getURL(int columnIndex) throws SQLException {
-        return null;
+        throw new SQLException("not supported url");
     }
 
     @Override
     public URL getURL(String columnLabel) throws SQLException {
-        return null;
+        throw new SQLException("not supported url");
     }
 
     @Override
@@ -795,12 +836,12 @@ class RedshiftResultSet implements ResultSet {
 
     @Override
     public RowId getRowId(int columnIndex) throws SQLException {
-        return null;
+        throw new SQLException("not supported row id");
     }
 
     @Override
     public RowId getRowId(String columnLabel) throws SQLException {
-        return null;
+        throw new SQLException("not supported row id");
     }
 
     @Override
@@ -845,22 +886,22 @@ class RedshiftResultSet implements ResultSet {
 
     @Override
     public NClob getNClob(int columnIndex) throws SQLException {
-        return null;
+        throw new SQLException("not supported clob");
     }
 
     @Override
     public NClob getNClob(String columnLabel) throws SQLException {
-        return null;
+        throw new SQLException("not supported clob");
     }
 
     @Override
     public SQLXML getSQLXML(int columnIndex) throws SQLException {
-        return null;
+        throw new SQLException("not supported sqlxml");
     }
 
     @Override
     public SQLXML getSQLXML(String columnLabel) throws SQLException {
-        return null;
+        throw new SQLException("not supported sqlxml");
     }
 
     @Override
@@ -875,22 +916,22 @@ class RedshiftResultSet implements ResultSet {
 
     @Override
     public String getNString(int columnIndex) throws SQLException {
-        return null;
+        throw new SQLException("not supported nstring");
     }
 
     @Override
     public String getNString(String columnLabel) throws SQLException {
-        return null;
+        throw new SQLException("not supported nstring");
     }
 
     @Override
     public Reader getNCharacterStream(int columnIndex) throws SQLException {
-        return null;
+        throw new SQLException("not supported ncharacter stream");
     }
 
     @Override
     public Reader getNCharacterStream(String columnLabel) throws SQLException {
-        return null;
+        throw new SQLException("not supported ncharacter stream");
     }
 
     @Override

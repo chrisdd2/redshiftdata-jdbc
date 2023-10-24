@@ -7,7 +7,11 @@ import java.math.BigDecimal;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
+import java.sql.Timestamp;
 
 class RedshiftResultSetMetadata implements ResultSetMetaData {
 
@@ -17,7 +21,7 @@ class RedshiftResultSetMetadata implements ResultSetMetaData {
         this.metadata = resp.columnMetadata();
     }
 
-    private ColumnMetadata getColumn(int idx){
+    private ColumnMetadata getColumn(int idx) throws SQLException {
         return this.metadata.get(idx-1);
     }
     @Override
@@ -32,7 +36,7 @@ class RedshiftResultSetMetadata implements ResultSetMetaData {
 
     @Override
     public boolean isCaseSensitive(int column) throws SQLException {
-        return this.getColumn(column).isCaseSensitive();
+        return boolOrEmpty(this.getColumn(column).isCaseSensitive());
     }
 
     @Override
@@ -42,7 +46,7 @@ class RedshiftResultSetMetadata implements ResultSetMetaData {
 
     @Override
     public boolean isCurrency(int column) throws SQLException {
-        return this.getColumn(column).isCurrency();
+        return boolOrEmpty(this.getColumn(column).isCurrency());
     }
 
     @Override
@@ -52,56 +56,71 @@ class RedshiftResultSetMetadata implements ResultSetMetaData {
 
     @Override
     public boolean isSigned(int column) throws SQLException {
-        return this.getColumn(column).isSigned();
+        return boolOrEmpty(this.getColumn(column).isSigned());
     }
 
     @Override
     public int getColumnDisplaySize(int column) throws SQLException {
-        return this.getColumn(column).length();
+        return intOrEmpty(this.getColumn(column).length());
     }
 
     @Override
     public String getColumnLabel(int column) throws SQLException {
-        return this.getColumn(column).label();
+        return this.getColumn(column).label() == null ? this.getColumn(column).name() : "";
     }
 
     @Override
     public String getColumnName(int column) throws SQLException {
-        return this.getColumn(column).name();
+        return stringOrEmpty(this.getColumn(column).name());
     }
 
     @Override
     public String getSchemaName(int column) throws SQLException {
-        return this.getColumn(column).schemaName();
+        return stringOrEmpty(this.getColumn(column).schemaName());
     }
 
     @Override
     public int getPrecision(int column) throws SQLException {
-        return this.getColumn(column).precision();
+        ColumnMetadata c = this.getColumn(column);
+        return c.precision() == null ? c.length(): intOrEmpty(c.precision());
     }
 
     @Override
     public int getScale(int column) throws SQLException {
-        return this.getColumn(column).scale();
+        return intOrEmpty(this.getColumn(column).scale());
     }
 
     @Override
     public String getTableName(int column) throws SQLException {
-        return this.getColumn(column).tableName();
+        return stringOrEmpty(this.getColumn(column).tableName());
     }
 
     @Override
     public String getCatalogName(int column) throws SQLException {
-        return "redshift";
+        return stringOrEmpty(getColumn(column).schemaName());
     }
 
     @Override
     public int getColumnType(int column) throws SQLException {
-        String type = this.getColumnTypeName(column);
+        return mapRedshiftType(this.getColumnTypeName(column));
+    }
+
+    private String stringOrEmpty(String s){
+        return s == null? "": s;
+    }
+    private int intOrEmpty(Integer s){
+        return s == null? 0: s;
+    }
+    private boolean boolOrEmpty(Boolean s){
+        return s == null? false: s;
+    }
+
+    public static int mapRedshiftType(String type) {
         switch(type){
             case "bigint":
             case "oid":
                 return Types.BIGINT;
+            case "bool":
             case "boolean": return Types.BOOLEAN;
             case "char": return Types.CHAR;
             case "date": return Types.DATE;
@@ -146,13 +165,20 @@ class RedshiftResultSetMetadata implements ResultSetMetaData {
             case "bigint":
             case "oid":
                 return Long.class.getName();
+            case "bool":
             case "boolean": return Boolean.class.getName();
             case "char": return Character.class.getName();
             case "real":
             case "decimal": return BigDecimal.class.getName();
             case "double": return Double.class.getName();
             case "integer": return Integer.class.getName();
-            default:  return String.class.getName();
+            case "date": return LocalDate.class.getName();
+            case "time":
+            case "timetz": return LocalTime.class.getName();
+            case "timestamp":
+            case "timestamptz": return LocalDateTime.class.getName();
+            default:
+                return String.class.getName();
         }
     }
 

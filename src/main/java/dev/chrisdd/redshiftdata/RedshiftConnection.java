@@ -3,24 +3,78 @@ package dev.chrisdd.redshiftdata;
 import dev.chrisdd.redshiftdata.config.RedshiftConfiguration;
 import software.amazon.awssdk.services.redshiftdata.RedshiftDataClient;
 import software.amazon.awssdk.services.redshiftdata.model.*;
-import software.amazon.awssdk.services.redshiftdata.paginators.GetStatementResultIterable;
+import software.amazon.awssdk.services.redshiftdata.paginators.*;
 
 import java.sql.*;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.Executor;
 
 class RedshiftConnection implements Connection {
 
-    private RedshiftConfiguration config;
-    private RedshiftDataClient client;
+    private final RedshiftConfiguration config;
+    private final RedshiftDataClient client;
     private String schema;
+    private String catalog;
 
     public RedshiftConnection(RedshiftConfiguration config){
         this.client = config.getClient();
         this.config = config;
-        this.schema = "public";
+        this.schema = null;
+        this.catalog= config.getDatabase();
+    }
+
+
+
+    public ListDatabasesIterable listDatabase(){
+        ListDatabasesRequest req = ListDatabasesRequest.builder()
+                .database(this.config.getDatabase())
+                .clusterIdentifier(this.config.getClusterIdentifier())
+                .dbUser(this.config.getDbUser())
+                .secretArn(this.config.getSecretArn())
+                .workgroupName(this.config.getWorkgroupName())
+                .build();
+        return this.client.listDatabasesPaginator(req);
+    }
+    public ListTablesIterable listTables(String schemaPattern,String tablePattern){
+        ListTablesRequest req = ListTablesRequest.builder()
+                .database(this.config.getDatabase())
+                .clusterIdentifier(this.config.getClusterIdentifier())
+                .dbUser(this.config.getDbUser())
+                .secretArn(this.config.getSecretArn())
+                .workgroupName(this.config.getWorkgroupName())
+                .connectedDatabase(this.config.getDatabase())
+                .tablePattern(tablePattern)
+                .schemaPattern(schemaPattern)
+                .build();
+        return this.client.listTablesPaginator(req);
+    }
+
+    public Iterator<DescribeTableResponse> describeTable(String schema,String name){
+        DescribeTableRequest req = DescribeTableRequest.builder()
+                .workgroupName(this.config.getWorkgroupName())
+                .database(this.config.getDatabase())
+                .connectedDatabase(this.config.getDatabase())
+                .clusterIdentifier(this.config.getClusterIdentifier())
+                .secretArn(this.config.getSecretArn())
+                .dbUser(this.config.getDbUser())
+                .schema(schema)
+                .table(name)
+                .build();
+        return this.client.describeTablePaginator(req).iterator();
+    }
+
+
+    public ListSchemasIterable listSchemas(String schemaPattern){
+        ListSchemasRequest req = ListSchemasRequest.builder()
+                .database(this.config.getDatabase())
+                .clusterIdentifier(this.config.getClusterIdentifier())
+                .dbUser(this.config.getDbUser())
+                .secretArn(this.config.getSecretArn())
+                .workgroupName(this.config.getWorkgroupName())
+                .connectedDatabase(this.config.getDatabase())
+                .schemaPattern(schemaPattern)
+                .build();
+        return this.client.listSchemasPaginator(req);
     }
 
     private void cancelExecution(String id){
@@ -68,33 +122,34 @@ class RedshiftConnection implements Connection {
         return this.client.describeStatement(req);
     }
 
-    private GetStatementResultIterable getStatementResult(String id){
+    private Iterator<GetStatementResultResponse> getStatementResult(String id){
         GetStatementResultRequest req = GetStatementResultRequest.builder()
                 .id(id)
                 .build();
-        return this.client.getStatementResultPaginator(req);
+        return this.client.getStatementResultPaginator(req).iterator();
     }
 
-    private String executeSqlImpl(String query){
-        ExecuteStatementRequest req = ExecuteStatementRequest.builder()
+    private String executeSqlImpl(String query,SqlParameter[] parameters){
+        ExecuteStatementRequest.Builder req = ExecuteStatementRequest.builder()
                 .sql(query)
                 .database(this.config.getDatabase())
                 .clusterIdentifier(this.config.getClusterIdentifier())
                 .dbUser(this.config.getDbUser())
                 .secretArn(this.config.getSecretArn())
-                .workgroupName(this.config.getWorkgroupName())
-                .build();
-        ExecuteStatementResponse resp = this.client.executeStatement(req);
+                .workgroupName(this.config.getWorkgroupName());
+        if (parameters.length >0 )
+            req = req.parameters(parameters);
+        ExecuteStatementResponse resp = this.client.executeStatement(req.build());
         return resp.id();
     }
 
-    public long executeSql(String query) throws SQLException, InterruptedException {
-        String id = this.executeSqlImpl(query);
+    public long executeSql(String query, SqlParameter[] params) throws SQLException, InterruptedException {
+        String id = this.executeSqlImpl(query,params);
         waitExecution(id);
         return describeExecution(id).resultRows();
     }
-    public Optional<GetStatementResultIterable> executeQuery(String query) throws SQLException, InterruptedException {
-        String id = this.executeSqlImpl(query);
+    public Optional<Iterator<GetStatementResultResponse>> executeQuery(String query,SqlParameter[] params ) throws SQLException, InterruptedException {
+        String id = this.executeSqlImpl(query,params);
         waitExecution(id);
         DescribeStatementResponse resp = describeExecution(id);
         if (resp.hasResultSet())
@@ -111,12 +166,12 @@ class RedshiftConnection implements Connection {
 
     @Override
     public PreparedStatement prepareStatement(String sql) throws SQLException {
-        throw new SQLFeatureNotSupportedException("not supported");
+        return new RedshiftPreparedStatement(this,sql);
     }
 
     @Override
     public CallableStatement prepareCall(String sql) throws SQLException {
-        throw new SQLFeatureNotSupportedException("not supported");
+        throw new SQLFeatureNotSupportedException("not supported call");
     }
 
     @Override
@@ -135,17 +190,17 @@ class RedshiftConnection implements Connection {
 
     @Override
     public void commit() throws SQLException {
-        throw new SQLFeatureNotSupportedException("not supported");
+        throw new SQLFeatureNotSupportedException("not supported commit");
     }
 
     @Override
     public void rollback() throws SQLException {
-        throw new SQLFeatureNotSupportedException("not supported");
+        throw new SQLFeatureNotSupportedException("not supported rollback");
     }
 
     @Override
     public void close() throws SQLException {
-
+        this.client.close();
     }
 
     @Override
@@ -170,12 +225,12 @@ class RedshiftConnection implements Connection {
 
     @Override
     public void setCatalog(String catalog) throws SQLException {
-        throw new SQLFeatureNotSupportedException("not supported");
+        this.catalog = catalog;
     }
 
     @Override
     public String getCatalog() throws SQLException {
-        throw new SQLFeatureNotSupportedException("not supported");
+        return this.catalog;
     }
 
     @Override
@@ -189,7 +244,7 @@ class RedshiftConnection implements Connection {
 
     @Override
     public SQLWarning getWarnings() throws SQLException {
-        throw new SQLFeatureNotSupportedException("not supported");
+        throw new SQLFeatureNotSupportedException("not supported warnings");
     }
 
     @Override
@@ -204,17 +259,17 @@ class RedshiftConnection implements Connection {
 
     @Override
     public PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency) throws SQLException {
-        throw new SQLFeatureNotSupportedException("not supported");
+        return prepareStatement(sql);
     }
 
     @Override
     public CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency) throws SQLException {
-        throw new SQLFeatureNotSupportedException("not supported");
+        throw new SQLFeatureNotSupportedException("not supported call");
     }
 
     @Override
     public Map<String, Class<?>> getTypeMap() throws SQLException {
-        throw new SQLFeatureNotSupportedException("not supported");
+        throw new SQLFeatureNotSupportedException("not supported type map");
     }
 
     @Override
@@ -234,22 +289,22 @@ class RedshiftConnection implements Connection {
 
     @Override
     public Savepoint setSavepoint() throws SQLException {
-        throw new SQLFeatureNotSupportedException("not supported");
+        throw new SQLFeatureNotSupportedException("not supported savepoint");
     }
 
     @Override
     public Savepoint setSavepoint(String name) throws SQLException {
-        throw new SQLFeatureNotSupportedException("not supported");
+        throw new SQLFeatureNotSupportedException("not supported savepoint");
     }
 
     @Override
     public void rollback(Savepoint savepoint) throws SQLException {
-        throw new SQLFeatureNotSupportedException("not supported");
+        throw new SQLFeatureNotSupportedException("not supported savepoint");
     }
 
     @Override
     public void releaseSavepoint(Savepoint savepoint) throws SQLException {
-        throw new SQLFeatureNotSupportedException("not supported");
+        throw new SQLFeatureNotSupportedException("not supported savepoint");
     }
 
     @Override
@@ -259,47 +314,47 @@ class RedshiftConnection implements Connection {
 
     @Override
     public PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability) throws SQLException {
-        throw new SQLFeatureNotSupportedException("not supported");
+        return prepareStatement(sql);
     }
 
     @Override
     public CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability) throws SQLException {
-        throw new SQLFeatureNotSupportedException("not supported");
+        throw new SQLFeatureNotSupportedException("not supported call");
     }
 
     @Override
     public PreparedStatement prepareStatement(String sql, int autoGeneratedKeys) throws SQLException {
-        throw new SQLFeatureNotSupportedException("not supported");
+        return prepareStatement(sql);
     }
 
     @Override
     public PreparedStatement prepareStatement(String sql, int[] columnIndexes) throws SQLException {
-        throw new SQLFeatureNotSupportedException("not supported");
+        return prepareStatement(sql);
     }
 
     @Override
     public PreparedStatement prepareStatement(String sql, String[] columnNames) throws SQLException {
-        throw new SQLFeatureNotSupportedException("not supported");
+        return prepareStatement(sql);
     }
 
     @Override
     public Clob createClob() throws SQLException {
-        throw new SQLFeatureNotSupportedException("not supported");
+        throw new SQLFeatureNotSupportedException("not supported clob");
     }
 
     @Override
     public Blob createBlob() throws SQLException {
-        throw new SQLFeatureNotSupportedException("not supported");
+        throw new SQLFeatureNotSupportedException("not supported blob");
     }
 
     @Override
     public NClob createNClob() throws SQLException {
-        throw new SQLFeatureNotSupportedException("not supported");
+        throw new SQLFeatureNotSupportedException("not supported blob");
     }
 
     @Override
     public SQLXML createSQLXML() throws SQLException {
-        throw new SQLFeatureNotSupportedException("not supported");
+        throw new SQLFeatureNotSupportedException("not supported sqlxml");
     }
 
     @Override
@@ -328,12 +383,12 @@ class RedshiftConnection implements Connection {
 
     @Override
     public Array createArrayOf(String typeName, Object[] elements) throws SQLException {
-        throw new SQLFeatureNotSupportedException("not supported");
+        throw new SQLFeatureNotSupportedException("not supported array");
     }
 
     @Override
     public Struct createStruct(String typeName, Object[] attributes) throws SQLException {
-        throw new SQLFeatureNotSupportedException("not supported");
+        throw new SQLFeatureNotSupportedException("not supported struct");
     }
 
     @Override
@@ -348,7 +403,7 @@ class RedshiftConnection implements Connection {
 
     @Override
     public void abort(Executor executor) throws SQLException {
-        throw new SQLFeatureNotSupportedException("not supported");
+        throw new SQLFeatureNotSupportedException("not supported abort");
     }
 
     @Override

@@ -1,12 +1,14 @@
 package dev.chrisdd.redshiftdata;
 
+import software.amazon.awssdk.services.redshiftdata.model.SqlParameter;
+
 import java.sql.*;
 import java.util.Optional;
 
 class RedshiftStatement implements Statement {
 
 
-    private final RedshiftConnection conn;
+    protected final RedshiftConnection conn;
     private Optional<RedshiftResultSet> resultSet;
 
     public RedshiftStatement(RedshiftConnection conn){
@@ -16,7 +18,14 @@ class RedshiftStatement implements Statement {
     @Override
     public ResultSet executeQuery(String sql) throws SQLException {
         try {
-            this.resultSet=this.conn.executeQuery(sql).map(r -> new RedshiftResultSet(this,r));
+            this.resultSet= this.conn.executeQuery(sql,new SqlParameter[0]).map(r -> {
+                // sigh java
+                try {
+                    return new RedshiftResultSet(this, r);
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            });
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -29,7 +38,7 @@ class RedshiftStatement implements Statement {
     @Override
     public int executeUpdate(String sql) throws SQLException {
         try {
-            return (int)this.conn.executeSql(sql);
+            return (int)this.conn.executeSql(sql,new SqlParameter[0]);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }

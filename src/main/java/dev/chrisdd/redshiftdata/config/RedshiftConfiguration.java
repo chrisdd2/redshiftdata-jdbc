@@ -19,7 +19,6 @@ public class RedshiftConfiguration {
     static final String DBUSER_PROPERTY = "dbUser";
     static final String SECRET_ARN_PROPERTY = "secretArn";
     static final String NETWORK_TIMEOUT_PROPERTY = "networkTimeout";
-
     static final String AWS_PROFILE_NAME_PROPERTY = "profile";
 
     String database;
