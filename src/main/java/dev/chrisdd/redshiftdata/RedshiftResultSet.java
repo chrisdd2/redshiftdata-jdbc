@@ -147,17 +147,17 @@ class RedshiftResultSet implements ResultSet {
 
     @Override
     public byte getByte(int columnIndex) throws SQLException {
-        return this.getObject(columnIndex,Byte.class);
+        return this.getObject(columnIndex,Long.class).byteValue();
     }
 
     @Override
     public short getShort(int columnIndex) throws SQLException {
-        return this.getObject(columnIndex,Short.class);
+        return this.getObject(columnIndex,Long.class).shortValue();
     }
 
     @Override
     public int getInt(int columnIndex) throws SQLException {
-        return this.getObject(columnIndex,Integer.class);
+        return this.getObject(columnIndex,Long.class).intValue();
     }
 
     @Override

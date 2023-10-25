@@ -19,7 +19,6 @@ public class RedshiftConfiguration {
     static final String DBUSER_PROPERTY = "dbUser";
     static final String SECRET_ARN_PROPERTY = "secretArn";
     static final String NETWORK_TIMEOUT_PROPERTY = "networkTimeout";
-    static final String AWS_PROFILE_NAME_PROPERTY = "profile";
 
     String database;
     String workgroupName;
@@ -28,8 +27,6 @@ public class RedshiftConfiguration {
     String secretArn;
     int networkTimeout;
     String url;
-
-    String awsProfileName;
 
     public String getDatabase() {
         return database;
@@ -79,13 +76,7 @@ public class RedshiftConfiguration {
         this.networkTimeout = networkTimeout;
     }
 
-    public String getAwsProfileName() {
-        return awsProfileName;
-    }
 
-    public void setAwsProfileName(String awsProfileName) {
-        this.awsProfileName = awsProfileName;
-    }
 
     public String getUrl(){
         return this.url;
@@ -100,7 +91,6 @@ public class RedshiftConfiguration {
                 new DriverPropertyInfo(CLUSTER_IDENTIFIER_PROPERTY,""),
                 new DriverPropertyInfo(DBUSER_PROPERTY,""),
                 new DriverPropertyInfo(SECRET_ARN_PROPERTY,""),
-                new DriverPropertyInfo(AWS_PROFILE_NAME_PROPERTY,""),
                 new DriverPropertyInfo(NETWORK_TIMEOUT_PROPERTY,"60000")
         };
     }
@@ -111,7 +101,6 @@ public class RedshiftConfiguration {
             case WORKGROUP_NAME_PROPERTY: setWorkgroupName(value);break;
             case CLUSTER_IDENTIFIER_PROPERTY: setClusterIdentifier(value);break;
             case SECRET_ARN_PROPERTY: setSecretArn(value);break;
-            case AWS_PROFILE_NAME_PROPERTY: setAwsProfileName(value);break;
             case NETWORK_TIMEOUT_PROPERTY: setNetworkTimeout(Integer.parseUnsignedInt(value));break;
         }
 
@@ -139,8 +128,9 @@ public class RedshiftConfiguration {
                     this.setSecretArn(value);
                 }else if (key.equals("dbUser") && !value.isEmpty()){
                     this.setDbUser(value);
-                }else if (key.equals("profile") && !value.isEmpty()){
-                    this.setAwsProfileName(value);
+                }else{
+                    // allow other jvm options
+                    System.setProperty(key,value);
                 }
             }
         }
@@ -154,8 +144,6 @@ public class RedshiftConfiguration {
     public RedshiftDataClient getClient(){
         RedshiftDataClientBuilder b = RedshiftDataClient.builder()
                 .httpClientBuilder(ApacheHttpClient.builder());
-        if (this.awsProfileName != null && !this.awsProfileName.isEmpty())
-            b = b.credentialsProvider(ProfileCredentialsProvider.create(this.awsProfileName));
         return b.build();
     }
 

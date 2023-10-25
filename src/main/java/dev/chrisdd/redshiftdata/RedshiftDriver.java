@@ -13,7 +13,7 @@ public class RedshiftDriver implements Driver {
     public static int MAJOR_VERSION = 0;
     public static int MINOR_VERSION = 1;
 
-    public static Pattern JDBC_URL = Pattern.compile("^jdbc:redshiftdata:@(?<id>[\\w-]+)/(?<db>[\\w-]+)(?<params>\\?[\\w-=_&]+)$");
+    public static Pattern JDBC_URL = Pattern.compile("^jdbc:redshiftdata:@(?<id>[\\w-]+)/(?<db>[\\w-]+)(?<params>\\?[\\w-=_&/:\\.]+)$");
 
 
     @Override

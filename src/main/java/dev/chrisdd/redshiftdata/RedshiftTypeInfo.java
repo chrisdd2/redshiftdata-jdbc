@@ -217,25 +217,6 @@ public class RedshiftTypeInfo {
         );
     }
 
-    public static RedshiftTypeInfo SMALLINT = new RedshiftTypeInfo("SMALLINT", Types.SMALLINT,16,"","","", DatabaseMetaData.typeNullable,false,DatabaseMetaData.typeSearchable,false,true,"SMALLINT",16,16,2);
-    public static RedshiftTypeInfo INT2 =SMALLINT.alias("INT2");
-    public static RedshiftTypeInfo INTEGER = new RedshiftTypeInfo("INTEGER", Types.INTEGER,32,"","","", DatabaseMetaData.typeNullable,false,DatabaseMetaData.typeSearchable,false,true,"INTEGER",32,32,2);
-    public static RedshiftTypeInfo INT = INTEGER.alias("INT");
-    public static RedshiftTypeInfo INT4 = INTEGER.alias("INT4");
-    public static RedshiftTypeInfo BIGINT = new RedshiftTypeInfo("BIGINT", Types.BIGINT,64,"","","", DatabaseMetaData.typeNullable,false,DatabaseMetaData.typeSearchable,false,true,"BIGINT",64,64,2);
-    public static RedshiftTypeInfo INT8 = BIGINT.alias("INT8");
-
-    public static RedshiftTypeInfo DECIMAL = new RedshiftTypeInfo("DECIMAL", Types.DECIMAL,38,"","","", DatabaseMetaData.typeNullable,false,DatabaseMetaData.typeSearchable,false,true,"DECIMAL",20,20,2);
-    public static RedshiftTypeInfo NUMERIC = DECIMAL.alias("NUMERIC");
-    public static RedshiftTypeInfo REAL = new RedshiftTypeInfo("REAL", Types.REAL,24,"","","", DatabaseMetaData.typeNullable,false,DatabaseMetaData.typeSearchable,false,true,"REAL",0,0,2);
-    public static RedshiftTypeInfo FLOAT4 = REAL.alias("FLOAT4") ;
-    public static RedshiftTypeInfo DOUBLE_PRECISION = new RedshiftTypeInfo("DOUBLE PRECISION", Types.DOUBLE,53,"","","", DatabaseMetaData.typeNullable,false,DatabaseMetaData.typeSearchable,false,true,"REAL",0,0,2);
-    public static RedshiftTypeInfo FLOAT8 = DOUBLE_PRECISION.alias("FLOAT8") ;
-    public static RedshiftTypeInfo FLOAT = DOUBLE_PRECISION.alias("FLOAT") ;
-
-    public static RedshiftTypeInfo BOOLEAN =  new RedshiftTypeInfo("BOOLEAN", Types.BOOLEAN,1,"","","", DatabaseMetaData.typeNullable,false,DatabaseMetaData.typeSearchable,false,true,"BOOLEAN",0,0,0);
-    public static RedshiftTypeInfo BOOL =  BOOLEAN.alias("BOOL");
-
     public static ResultSet getTypeInfo(RedshiftStatement stmt) throws SQLException {
         ColumnMetadata[] columns = new ColumnMetadata[]{
                 ColumnMetadata.builder()
@@ -325,9 +306,12 @@ public class RedshiftTypeInfo {
                         .build()
         };
         List<List<Field>> records = Stream.of(
-    SMALLINT , INT2 , INTEGER , INT , INT4 , BIGINT ,
-    INT8 , DECIMAL , NUMERIC , REAL , FLOAT4 , DOUBLE_PRECISION ,
-    FLOAT8 , FLOAT , BOOLEAN , BOOL
+                        SMALLINT, INT2, INTEGER, INT, INT4, BIGINT,
+                        INT8, DECIMAL, NUMERIC, REAL, FLOAT4, DOUBLE_PRECISION,
+                        FLOAT8, FLOAT, BOOLEAN, BOOL, CHAR,CHARACTER,BPCHAR,NCHAR,
+                        VARCHAR,NVARCHAR,CHARACTER_VARYING,TEXT,DATE,
+                        TIME,TIMETZ,TIMESTAMP,TIMESTAMPTZ,SUPER,
+                        VARBYTE,VARBINARY,BINARY_VARYING
                 )
                 .map(d -> Arrays.asList(
                         Field.builder().stringValue(d.typeName).build(),
@@ -336,17 +320,17 @@ public class RedshiftTypeInfo {
                         Field.builder().stringValue(d.literalPrefix).build(),
                         Field.builder().stringValue(d.literalSuffix).build(),
                         Field.builder().stringValue(d.createParams).build(),
-                        Field.builder().longValue((long)d.nullable).build(),
-                        Field.builder().longValue((long)d.searchable).build(),
+                        Field.builder().longValue((long) d.nullable).build(),
+                        Field.builder().longValue((long) d.searchable).build(),
                         Field.builder().booleanValue(d.caseSensitive).build(),
                         Field.builder().booleanValue(d.unsignedAttribute).build(),
                         Field.builder().booleanValue(d.autoIncrement).build(),
                         Field.builder().stringValue(d.localTypeName).build(),
-                        Field.builder().longValue((long)d.minimumScale).build(),
-                        Field.builder().longValue((long)d.maximumScale).build(),
+                        Field.builder().longValue((long) d.minimumScale).build(),
+                        Field.builder().longValue((long) d.maximumScale).build(),
                         Field.builder().isNull(true).build(),
                         Field.builder().isNull(true).build(),
-                        Field.builder().longValue((long)d.numericPrecisionRadix).build()
+                        Field.builder().longValue((long) d.numericPrecisionRadix).build()
                 ))
                 .collect(Collectors.toList());
         records.forEach(System.out::println);
@@ -356,9 +340,54 @@ public class RedshiftTypeInfo {
                         .records(records)
                         .totalNumRows((long) records.size())
                         .build()).iterator());
-
     }
+
+    public static RedshiftTypeInfo SMALLINT = new RedshiftTypeInfo("SMALLINT", Types.SMALLINT,16,"","","", DatabaseMetaData.typeNullable,false,DatabaseMetaData.typeSearchable,false,true,"SMALLINT",16,16,2);
+    public static RedshiftTypeInfo INT2 =SMALLINT.alias("INT2");
+    public static RedshiftTypeInfo INTEGER = new RedshiftTypeInfo("INTEGER", Types.INTEGER,32,"","","", DatabaseMetaData.typeNullable,false,DatabaseMetaData.typeSearchable,false,true,"INTEGER",32,32,2);
+    public static RedshiftTypeInfo INT = INTEGER.alias("INT");
+    public static RedshiftTypeInfo INT4 = INTEGER.alias("INT4");
+    public static RedshiftTypeInfo BIGINT = new RedshiftTypeInfo("BIGINT", Types.BIGINT,64,"","","", DatabaseMetaData.typeNullable,false,DatabaseMetaData.typeSearchable,false,true,"BIGINT",64,64,2);
+    public static RedshiftTypeInfo INT8 = BIGINT.alias("INT8");
+
+    public static RedshiftTypeInfo DECIMAL = new RedshiftTypeInfo("DECIMAL", Types.DECIMAL,38,"","","", DatabaseMetaData.typeNullable,false,DatabaseMetaData.typeSearchable,false,false,"DECIMAL",20,20,2);
+    public static RedshiftTypeInfo NUMERIC = DECIMAL.alias("NUMERIC");
+    public static RedshiftTypeInfo REAL = new RedshiftTypeInfo("REAL", Types.REAL,24,"","","", DatabaseMetaData.typeNullable,false,DatabaseMetaData.typeSearchable,false,false,"REAL",0,0,2);
+    public static RedshiftTypeInfo FLOAT4 = REAL.alias("FLOAT4") ;
+    public static RedshiftTypeInfo DOUBLE_PRECISION = new RedshiftTypeInfo("DOUBLE PRECISION", Types.DOUBLE,53,"","","", DatabaseMetaData.typeNullable,false,DatabaseMetaData.typeSearchable,false,false,"REAL",0,0,2);
+    public static RedshiftTypeInfo FLOAT8 = DOUBLE_PRECISION.alias("FLOAT8") ;
+    public static RedshiftTypeInfo FLOAT = DOUBLE_PRECISION.alias("FLOAT") ;
+
+    public static RedshiftTypeInfo BOOLEAN =  new RedshiftTypeInfo("BOOLEAN", Types.BOOLEAN,1,"","","", DatabaseMetaData.typeNullable,false,DatabaseMetaData.typeSearchable,false,false,"BOOLEAN",0,0,0);
+    public static RedshiftTypeInfo BOOL =  BOOLEAN.alias("BOOL");
+
+    public static RedshiftTypeInfo CHAR =  new RedshiftTypeInfo("CHAR", Types.CHAR,65535,"","","", DatabaseMetaData.typeNullable,false,DatabaseMetaData.typeSearchable,false,false,"CHAR",0,0,0);
+    public static RedshiftTypeInfo CHARACTER = CHAR.alias("CHARACTER");
+    public static RedshiftTypeInfo NCHAR = CHAR.alias("NCHAR");
+    public static RedshiftTypeInfo BPCHAR = CHAR.alias("BPCHAR");
+
+    public static RedshiftTypeInfo VARCHAR =  new RedshiftTypeInfo("VARCHAR", Types.VARCHAR,65535,"","","", DatabaseMetaData.typeNullable,false,DatabaseMetaData.typeSearchable,false,false,"VARCHAR",0,0,0);
+    public static RedshiftTypeInfo CHARACTER_VARYING = VARCHAR.alias("CHARACTER VARYING");
+    public static RedshiftTypeInfo NVARCHAR = VARCHAR.alias("NVARCHAR");
+    public static RedshiftTypeInfo TEXT = VARCHAR.alias("TEXT");
+
+    public static RedshiftTypeInfo DATE =  new RedshiftTypeInfo("DATE", Types.DATE,10,"","","", DatabaseMetaData.typeNullable,false,DatabaseMetaData.typeSearchable,false,false,"DATE",0,0,0);
+
+    public static RedshiftTypeInfo TIMESTAMP =  new RedshiftTypeInfo("TIMESTAMP", Types.TIMESTAMP,40,"","","", DatabaseMetaData.typeNullable,false,DatabaseMetaData.typeSearchable,false,false,"TIMESTAMP",0,0,0);
+    public static RedshiftTypeInfo TIMESTAMPTZ =  new RedshiftTypeInfo("TIMESTAMPTZ", Types.TIMESTAMP_WITH_TIMEZONE,40,"","","", DatabaseMetaData.typeNullable,false,DatabaseMetaData.typeSearchable,false,false,"TIMESTAMPTZ",0,0,0);
+    public static RedshiftTypeInfo TIME =  new RedshiftTypeInfo("TIME", Types.TIME,9,"","","", DatabaseMetaData.typeNullable,false,DatabaseMetaData.typeSearchable,false,false,"TIME",0,0,0);
+    public static RedshiftTypeInfo TIMETZ =  new RedshiftTypeInfo("TIMETZ", Types.TIME_WITH_TIMEZONE,9,"","","", DatabaseMetaData.typeNullable,false,DatabaseMetaData.typeSearchable,false,false,"TIMETZ",0,0,0);
+    public static RedshiftTypeInfo SUPER =  new RedshiftTypeInfo("SUPER", Types.STRUCT,65535,"","","", DatabaseMetaData.typeNullable,false,DatabaseMetaData.typeSearchable,false,false,"STRUCT",0,0,0);
+
+    public static RedshiftTypeInfo VARBYTE =  new RedshiftTypeInfo("VARBYTE", Types.VARBINARY,1024000,"","","", DatabaseMetaData.typeNullable,false,DatabaseMetaData.typeSearchable,false,false,"VARBYTE",0,0,0);
+    public static RedshiftTypeInfo VARBINARY = VARBYTE.alias("VARBINARY");
+    public static RedshiftTypeInfo BINARY_VARYING = VARBYTE.alias("BINARY VARYING");
+
+
+
+
 }
+//    VARBYTE	VARBINARY, BINARY VARYING
 //    SMALLINT	INT2
 //    INTEGER	INT, INT4
 //    BIGINT	INT8
@@ -374,4 +403,3 @@ public class RedshiftTypeInfo {
 //    SUPER
 //    TIME	Time without time zone
 //    TIMETZ	Time with time zone
-//    VARBYTE	VARBINARY, BINARY VARYING
