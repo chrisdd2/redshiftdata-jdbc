@@ -51,9 +51,9 @@ class RedshiftResultSet implements ResultSet {
 
 
     private final RedshiftStatement stmt;
-    private List<Object[]> resultRows;
+    private List<List<Field>> resultRows;
 
-    private Object[] currentRow;
+    private List<Field> currentRow;
     private int totalResultRows;
     private int rowIndex;
     private int lastColumn;
@@ -81,7 +81,7 @@ class RedshiftResultSet implements ResultSet {
     }
 
     private void processResponse(Iterator<GetStatementResultResponse> iter) throws SQLException {
-        List<Object[]> rows = new ArrayList<>();
+        List<List<Field>> rows = new ArrayList<>();
 
         while (iter.hasNext()){
             GetStatementResultResponse resp = iter.next();
@@ -90,14 +90,7 @@ class RedshiftResultSet implements ResultSet {
                 this.metadata = new RedshiftResultSetMetadata(resp);
                 this.totalResultRows = Math.toIntExact(resp.totalNumRows());
             }
-            // TODO: this seems slow
-            for ( List<Field> r : resp.records() ){
-                Object[] row = new Object[r.size()];
-                for (int i =0;i<r.size();i++){
-                    row[i] = fieldToObject(r.get(i));
-                }
-                rows.add(row);
-            }
+            rows.addAll(resp.records());
         }
         this.resultRows = rows;
         this.rowIndex=0;
@@ -132,7 +125,7 @@ class RedshiftResultSet implements ResultSet {
         if (this.lastColumn == -1){
             throw new SQLException("you have to read at least one column");
         }
-        return this.currentRow[this.lastColumn] == null;
+        return this.currentRow.get(this.lastColumn).isNull();
     }
 
     @Override
@@ -317,8 +310,12 @@ class RedshiftResultSet implements ResultSet {
 
     @Override
     public Object getObject(int columnIndex) throws SQLException {
+        return fieldToObject(getField(columnIndex));
+    }
+
+    private Field getField(int columnIndex) throws SQLException {
         this.lastColumn = columnIndex-1;
-        return this.currentRow[columnIndex-1];
+        return this.currentRow.get(columnIndex-1);
     }
 
     @Override
@@ -1074,8 +1071,32 @@ class RedshiftResultSet implements ResultSet {
 
     }
 
+
     @Override
     public <T> T getObject(int columnIndex, Class<T> type) throws SQLException {
+        Field field  = getField(columnIndex);
+        if (field.isNull()){
+            return null;
+        }
+        if (type.equals(Long.class)) {
+            return type.cast(field.longValue());
+        } else if (type.equals(Integer.class)) {
+            return type.cast(field.longValue().intValue());
+        } else if (type.equals(Short.class)) {
+            return type.cast(field.longValue().shortValue());
+        } else if (type.equals(Byte.class)) {
+            return type.cast(field.longValue().byteValue());
+        } else if (type.equals(String.class)) {
+            return type.cast(field.stringValue());
+        } else if (type.equals(Double.class)) {
+            return type.cast(field.doubleValue());
+        } else if (type.equals(Float.class)) {
+            return type.cast(field.doubleValue().floatValue());
+        } else if ( type.equals(BigDecimal.class)){
+            return type.cast(new BigDecimal(field.stringValue()));
+        } else if ( type.equals(Boolean.class)){
+            return type.cast(field.booleanValue());
+        }
         return type.cast(this.getObject(columnIndex));
     }
 

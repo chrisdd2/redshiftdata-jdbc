@@ -12,22 +12,38 @@ import java.sql.Date;
 import java.util.*;
 
 public class RedshiftPreparedStatement extends RedshiftStatement implements PreparedStatement {
-    private String sql;
+    private final String sql;
     private ResultSet rs;
 
-    private List<SqlParameter> parameters;
+    private final SqlParameter[] parameters;
 
-    public RedshiftPreparedStatement(RedshiftConnection conn, String sql){
+    private int parameterCount(String sql){
+        // lets do a silly check
+        int count =0;
+        for (int i=0;i<sql.length();i++){
+            if (sql.charAt(i) != ':')
+                continue;
+            if ( (i+1) == sql.length())
+                continue;
+            if (Character.isDigit(sql.charAt(i)))
+                count +=1;
+        }
+        return count;
+    }
+
+    public RedshiftPreparedStatement(RedshiftConnection conn, String sql) throws SQLException {
         super(conn);
         this.sql = sql;
-        this.parameters = new ArrayList<>();
+        this.parameters = new SqlParameter[parameterCount(sql)];
+        for (int i=0;i<parameters.length;i++)
+            this.parameters[i] = SqlParameter.builder().name(String.valueOf(i+1)).value("").build();
+        this.executeQuery();
     }
 
     @Override
     public ResultSet executeQuery() throws SQLException {
-        SqlParameter[] params = new SqlParameter[this.parameters.size()];
         try {
-            Optional<Iterator<GetStatementResultResponse>> resp = super.conn.executeQuery(this.sql,this.parameters.toArray(params));
+            Optional<Iterator<GetStatementResultResponse>> resp = super.conn.executeQuery(this.sql,this.parameters);
             if (resp.isPresent())
                     this.rs = new RedshiftResultSet(this,resp.get());
         } catch (InterruptedException e) {
@@ -38,9 +54,8 @@ public class RedshiftPreparedStatement extends RedshiftStatement implements Prep
 
     @Override
     public int executeUpdate() throws SQLException {
-        SqlParameter[] params = new SqlParameter[this.parameters.size()];
         try {
-            return (int)super.conn.executeSql(this.sql,this.parameters.toArray(params));
+            return (int)super.conn.executeSql(this.sql,this.parameters);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -134,12 +149,12 @@ public class RedshiftPreparedStatement extends RedshiftStatement implements Prep
 
     @Override
     public void setObject(int parameterIndex, Object x, int targetSqlType) throws SQLException {
-
+        this.parameters[parameterIndex] = SqlParameter.builder().name(String.valueOf(parameterIndex)).value(String.valueOf(x)).build();
     }
 
     @Override
     public void setObject(int parameterIndex, Object x) throws SQLException {
-
+        setObject(parameterIndex,x,-1);
     }
 
     @Override
