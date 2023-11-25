@@ -29,9 +29,13 @@ jobs:
         cache: maven
     - name: Build with Maven
       run: mvn -B package --file pom.xml
+      
+    - name: Publish
+      run: mvn deploy -Dtoken=${{ secrets.GITHUB_TOKEN }}
 
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v3.1.3
       with:
         path: ./target/*with-dependencies.jar
+          
     
